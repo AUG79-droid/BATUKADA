@@ -14,8 +14,8 @@ interface ExercisePreviewProps {
 }
 
 const SVG_WIDTH = 1200;
-const SVG_HEIGHT = 600;
-const BG = "#d7dad7";
+const SVG_HEIGHT = 760;
+const BG = "#d9ddda";
 const BLACK = "#000000";
 const ACTIVE = "#2563eb";
 
@@ -28,9 +28,9 @@ function text(x: number, y: number, value: string, size = 36, anchor: "start" | 
 }
 
 function noteHeadY(syllable: Stroke["syllable"]): number {
-  if (syllable === "DUM") return 445; // grave: lower note = longer stem
-  if (syllable === "TA") return 390;  // agudo: higher note = shorter stem
-  return 405;                          // relleno: x-note in the middle
+  if (syllable === "DUM") return 520; // grave: lower note = longer stem
+  if (syllable === "TA") return 485;  // agudo: higher note = shorter stem
+  return 505;                          // relleno: x-note in the middle
 }
 
 function drawFilledHead(x: number, y: number, color = BLACK): string {
@@ -45,33 +45,31 @@ function drawXHead(x: number, y: number, color = BLACK): string {
     </g>`;
 }
 
-function drawLegendSymbol(kind: "DUM" | "TA" | "TI", x: number, y: number): string {
-  const stemTop = kind === "DUM" ? y - 95 : y - 70;
-  return `
-    <g aria-label="${kind}">
-      <line x1="${x + 11}" y1="${stemTop}" x2="${x + 11}" y2="${y + 5}" stroke="${BLACK}" stroke-width="3.8" />
-      ${kind === "TI" ? drawXHead(x, y) : drawFilledHead(x, y)}
-    </g>`;
-}
-
 function drawLegend(): string {
   // Three stacked rows, deliberately high and separate from the notation zone.
-  const labelX = 510;
-  const symbolX = 610;
-  const soundX = 695;
+  const legendTextX = 430;
+  const legendSymbolX = 600;
+  const legendStemX = 620;
+  const legendLabelX = 700;
+  const legendText = (label: string, y: number) => text(legendTextX, y, label, 40, "end");
+  const legendLabel = (label: string, y: number) => text(legendLabelX, y, label, 38, "start", 500);
+
   return `
     <g aria-label="Leyenda de sonidos">
-      ${text(labelX, 105, "Grave", 37, "end")}
-      ${drawLegendSymbol("DUM", symbolX, 105)}
-      ${text(soundX, 105, "DUM", 34, "start")}
+      ${legendText("Grave", 95)}
+      <line x1="${legendStemX}" y1="20" x2="${legendStemX}" y2="95" stroke="${BLACK}" stroke-width="4" />
+      ${drawFilledHead(legendSymbolX, 95)}
+      ${legendLabel("DUM", 95)}
 
-      ${text(labelX, 205, "Agudo", 37, "end")}
-      ${drawLegendSymbol("TA", symbolX, 205)}
-      ${text(soundX, 205, "TA", 34, "start")}
+      ${legendText("Agudo", 165)}
+      <line x1="${legendStemX}" y1="110" x2="${legendStemX}" y2="165" stroke="${BLACK}" stroke-width="4" />
+      ${drawFilledHead(legendSymbolX, 165)}
+      ${legendLabel("TA", 165)}
 
-      ${text(labelX, 285, "Relleno", 37, "end")}
-      ${drawLegendSymbol("TI", symbolX, 285)}
-      ${text(soundX, 285, "TI", 34, "start")}
+      ${legendText("Relleno", 235)}
+      <line x1="${legendStemX}" y1="180" x2="${legendStemX}" y2="235" stroke="${BLACK}" stroke-width="4" />
+      ${drawXHead(legendSymbolX, 235)}
+      ${legendLabel("TI", 235)}
     </g>`;
 }
 
@@ -111,21 +109,21 @@ function drawBeam(noteXs: number[], beamY: number): string {
 }
 
 function groupLayout(exercise: Exercise): { starts: number[]; gap: number; separators: number[]; repeatX: number } {
-  if (exercise.meter === "6/8") return { starts: [330, 700], gap: 80, separators: [620], repeatX: 1120 };
-  if (exercise.meter === "3/4") return { starts: [300, 530, 760], gap: 80, separators: [475, 705], repeatX: 1120 };
-  return { starts: [300, 500, 700, 900], gap: 85, separators: [455, 655, 855], repeatX: 1120 };
+  if (exercise.meter === "6/8") return { starts: [330, 700], gap: 80, separators: [620], repeatX: 1125 };
+  if (exercise.meter === "3/4") return { starts: [310, 540, 770], gap: 85, separators: [485, 715], repeatX: 1125 };
+  return { starts: [310, 510, 710, 910], gap: 85, separators: [465, 665, 865], repeatX: 1125 };
 }
 
 function drawGroup(exercise: Exercise, group: Stroke[], groupIndex: number, startX: number, activeStep?: { barIndex: number; strokeIndex: number } | null): string {
   const { gap } = groupLayout(exercise);
-  const beamY = 350;
-  const syllableY = 535;
+  const beamY = 405;
+  const syllableY = 660;
   const noteXs = group.map((_, i) => startX + i * gap);
   const groupCenter = (noteXs[0] + noteXs[noteXs.length - 1]) / 2;
 
   let out = "";
   if (shouldAccentGroup(group)) {
-    out += `<text x="${groupCenter}" y="302" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="400" fill="${BLACK}">&gt;</text>`;
+    out += `<text x="${groupCenter}" y="355" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="400" fill="${BLACK}">&gt;</text>`;
   }
 
   out += drawBeam(noteXs, beamY);
@@ -142,10 +140,10 @@ function drawRepeat(x: number): string {
   const bar2X = x + 15;
   return `
     <g aria-label="Repetición final">
-      <circle cx="${dotsX}" cy="390" r="7" fill="${BLACK}" />
-      <circle cx="${dotsX}" cy="455" r="7" fill="${BLACK}" />
-      <line x1="${bar1X}" y1="330" x2="${bar1X}" y2="490" stroke="${BLACK}" stroke-width="6" />
-      <line x1="${bar2X}" y1="330" x2="${bar2X}" y2="490" stroke="${BLACK}" stroke-width="6" />
+      <circle cx="${dotsX}" cy="470" r="7" fill="${BLACK}" />
+      <circle cx="${dotsX}" cy="540" r="7" fill="${BLACK}" />
+      <line x1="${bar1X}" y1="420" x2="${bar1X}" y2="600" stroke="${BLACK}" stroke-width="6" />
+      <line x1="${bar2X}" y1="420" x2="${bar2X}" y2="600" stroke="${BLACK}" stroke-width="6" />
     </g>`;
 }
 
@@ -159,9 +157,9 @@ export function renderExerciseSVGString(exercise: Exercise, activeStep?: { barIn
     ${drawLegend()}
 
     <!-- notation zone: starts below the legend and never overlaps it -->
-    ${text(92, 410, topNum, 78, "middle")}
-    ${text(92, 492, bottomNum, 78, "middle")}
-    <line x1="160" y1="358" x2="160" y2="510" stroke="${BLACK}" stroke-width="9" stroke-linecap="butt" />
+    ${text(95, 470, topNum, 86, "middle")}
+    ${text(95, 555, bottomNum, 86, "middle")}
+    <line x1="175" y1="420" x2="175" y2="600" stroke="${BLACK}" stroke-width="8" stroke-linecap="butt" />
   `;
 
   exercise.bars.forEach((bar, i) => {
@@ -169,7 +167,7 @@ export function renderExerciseSVGString(exercise: Exercise, activeStep?: { barIn
   });
 
   layout.separators.forEach((x) => {
-    svg += `<line x1="${x}" y1="358" x2="${x}" y2="510" stroke="${BLACK}" stroke-width="3.5" />`;
+    svg += `<line x1="${x}" y1="420" x2="${x}" y2="600" stroke="${BLACK}" stroke-width="3.5" />`;
   });
 
   svg += drawRepeat(layout.repeatX);

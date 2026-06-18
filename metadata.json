@@ -1,0 +1,6 @@
+{
+  "name": "PercuVoice Trainer",
+  "description": "Convierte ejercicios de percusion en imagen + audio para practicar ritmos de surdo/batucada.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

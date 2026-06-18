@@ -97,120 +97,160 @@ function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function stemLength(stroke: Stroke): number {
-  if (stroke.syllable === 'DUM') return 120;
-  if (stroke.syllable === 'TA') return 80;
-  return 95;
+const SVG_WIDTH = 1000;
+const SVG_HEIGHT = 600;
+const SVG_BG = '#d7dad7';
+const BLACK = '#000000';
+const ACTIVE = '#2563eb';
+
+function svgText(x: number, y: number, value: string, size = 36, anchor: 'start' | 'middle' | 'end' = 'middle', weight = 400): string {
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="${size}" font-weight="${weight}" fill="${BLACK}">${esc(value)}</text>`;
 }
 
-function renderNoteAt(stroke: Stroke, x: number, y: number, syllableY: number | null, active = false): string {
-  const color = active ? '#2563eb' : '#000000';
-  const stemX = stroke.syllable === 'TI' ? x + 10 : x + 11;
-  const activeGlow = active ? `<circle cx="${x}" cy="${y}" r="34" fill="#2563eb" fill-opacity="0.18" />` : '';
-  const stem = `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${y - stemLength(stroke)}" stroke="${color}" stroke-width="${stroke.syllable === 'DUM' ? 5 : 4}" stroke-linecap="butt" />`;
-  const head = stroke.syllable === 'TI'
-    ? `<g transform="translate(${x} ${y})"><line x1="-13" y1="-13" x2="13" y2="13" stroke="${color}" stroke-width="5" stroke-linecap="round" /><line x1="13" y1="-13" x2="-13" y2="13" stroke="${color}" stroke-width="5" stroke-linecap="round" /></g>`
-    : `<ellipse cx="${x}" cy="${y}" rx="${stroke.syllable === 'DUM' ? 18 : 15}" ry="${stroke.syllable === 'DUM' ? 12 : 10}" transform="rotate(-20 ${x} ${y})" fill="${color}" />`;
-  const label = syllableY === null ? '' : `<text x="${x}" y="${syllableY}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="500" fill="${color}">${stroke.syllable}</text>`;
-  return `${activeGlow}${stem}${head}${label}`;
+function noteHeadY(syllable: Stroke['syllable']): number {
+  if (syllable === 'DUM') return 445;
+  if (syllable === 'TA') return 390;
+  return 405;
 }
 
-function renderLegendNote(syllable: Syllable, x: number, y: number): string {
-  const stemX = x + 11;
-  const stemTopY = syllable === 'DUM' ? 40 : syllable === 'TA' ? 110 : 150;
-  const stemWidth = syllable === 'DUM' ? 5 : 4;
-  const head = syllable === 'TI'
-    ? `<g transform="translate(${x} ${y})"><line x1="-13" y1="-13" x2="13" y2="13" stroke="#000000" stroke-width="5" stroke-linecap="round" /><line x1="13" y1="-13" x2="-13" y2="13" stroke="#000000" stroke-width="5" stroke-linecap="round" /></g>`
-    : `<ellipse cx="${x}" cy="${y}" rx="${syllable === 'DUM' ? 18 : 15}" ry="${syllable === 'DUM' ? 12 : 10}" transform="rotate(-20 ${x} ${y})" fill="#000000" />`;
-
-  return `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${stemTopY}" stroke="#000000" stroke-width="${stemWidth}" stroke-linecap="butt" />${head}`;
+function drawFilledHead(x: number, y: number, color = BLACK): string {
+  return `<ellipse cx="${x}" cy="${y}" rx="14" ry="10" transform="rotate(-22 ${x} ${y})" fill="${color}" />`;
 }
 
-function renderLegendRow(label: string, syllable: Syllable, rowY: number): string {
-  const legendTextX = 470;
-  const legendSymbolX = 620;
-  const legendLabelX = 710;
-  const legendFontSize = 34;
-  const legendTextY = rowY + 11;
+function drawXHead(x: number, y: number, color = BLACK): string {
+  return `
+    <g transform="translate(${x} ${y})">
+      <line x1="-12" y1="-12" x2="12" y2="12" stroke="${color}" stroke-width="4.8" stroke-linecap="round" />
+      <line x1="12" y1="-12" x2="-12" y2="12" stroke="${color}" stroke-width="4.8" stroke-linecap="round" />
+    </g>`;
+}
+
+function drawLegendNote(kind: Syllable, x: number, y: number): string {
+  if (kind === 'TI') {
+    return `
+      <g>
+        <line x1="${x + 10}" y1="${y - 68}" x2="${x + 10}" y2="${y + 2}" stroke="${BLACK}" stroke-width="3.8" />
+        ${drawXHead(x, y + 8)}
+      </g>`;
+  }
+
+  const stemTop = kind === 'DUM' ? y - 95 : y - 64;
   return `
     <g>
-      <text x="${legendTextX}" y="${legendTextY}" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="${legendFontSize}" font-weight="400" fill="#000000">${label}</text>
-      ${renderLegendNote(syllable, legendSymbolX, rowY)}
-      <text x="${legendLabelX}" y="${legendTextY}" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="${legendFontSize}" font-weight="500" fill="#000000">${syllable}</text>
-    </g>
-  `;
+      <line x1="${x + 11}" y1="${stemTop}" x2="${x + 11}" y2="${y + 2}" stroke="${BLACK}" stroke-width="3.8" />
+      ${drawFilledHead(x, y + 8)}
+    </g>`;
 }
 
-function layoutForExercise(exercise: Exercise): { starts: number[]; noteGap: number; accentOffset: number; barlines: number[] } {
-  if (exercise.meter === '6/8') {
-    return { starts: [330, 700], noteGap: 80, accentOffset: 80, barlines: [620] };
+function drawLegend(): string {
+  const labelX = 420;
+  const symbolX = 520;
+  const soundX = 605;
+  return `
+    <g aria-label="Leyenda de sonidos">
+      ${svgText(labelX, 90, 'Grave', 37, 'end')}
+      ${drawLegendNote('DUM', symbolX, 82)}
+      ${svgText(soundX, 90, 'DUM', 34, 'start')}
+
+      ${svgText(labelX, 155, 'Agudo', 37, 'end')}
+      ${drawLegendNote('TA', symbolX, 147)}
+      ${svgText(soundX, 155, 'TA', 34, 'start')}
+
+      ${svgText(labelX, 220, 'Relleno', 37, 'end')}
+      ${drawLegendNote('TI', symbolX, 212)}
+      ${svgText(soundX, 220, 'TI', 34, 'start')}
+    </g>`;
+}
+
+function strokeColor(active: boolean): string {
+  return active ? ACTIVE : BLACK;
+}
+
+function drawStroke(stroke: Stroke, x: number, beamY: number, syllableY: number, active: boolean): string {
+  const color = strokeColor(active);
+  const y = noteHeadY(stroke.syllable);
+  const stemX = x + 11;
+  let out = '';
+
+  if (active) {
+    out += `<circle cx="${x}" cy="${y}" r="32" fill="${ACTIVE}" fill-opacity="0.18" />`;
   }
-  if (exercise.meter === '4/4' && exercise.bars.length === 4) {
-    return { starts: [300, 500, 700, 900], noteGap: 85, accentOffset: 42, barlines: [455, 655, 855] };
+
+  out += `<line x1="${stemX}" y1="${beamY}" x2="${stemX}" y2="${y}" stroke="${color}" stroke-width="4" stroke-linecap="butt" />`;
+  out += stroke.syllable === 'TI' ? drawXHead(x, y, color) : drawFilledHead(x, y, color);
+  out += `<text x="${x}" y="${syllableY}" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="500" fill="${color}">${stroke.syllable}</text>`;
+  return out;
+}
+
+function drawBeam(noteXs: number[], beamY: number): string {
+  if (noteXs.length <= 1) return '';
+  const x1 = noteXs[0] + 11;
+  const x2 = noteXs[noteXs.length - 1] + 11;
+  return `<rect x="${x1}" y="${beamY - 5}" width="${x2 - x1}" height="10" fill="${BLACK}" />`;
+}
+
+function groupLayout(exercise: Exercise): { starts: number[]; gap: number; separators: number[]; repeatX: number } {
+  if (exercise.meter === '6/8') return { starts: [285, 620], gap: 78, separators: [535], repeatX: 875 };
+  if (exercise.meter === '3/4') return { starts: [255, 455, 655], gap: 78, separators: [390, 590], repeatX: 850 };
+  return { starts: [235, 405, 575, 745], gap: 78, separators: [365, 535, 705], repeatX: 885 };
+}
+
+function drawGroup(exercise: Exercise, group: Stroke[], groupIndex: number, startX: number, activeStep?: { barIndex: number; strokeIndex: number } | null): string {
+  const { gap } = groupLayout(exercise);
+  const beamY = 350;
+  const syllableY = 535;
+  const noteXs = group.map((_, index) => startX + index * gap);
+  const groupCenter = (noteXs[0] + noteXs[noteXs.length - 1]) / 2;
+
+  let out = '';
+  if (group.some((stroke) => stroke.accent)) {
+    out += `<text x="${groupCenter}" y="302" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="400" fill="${BLACK}">&gt;</text>`;
   }
-  const starts = exercise.bars.map((_, index) => 300 + index * 200);
-  return { starts, noteGap: 85, accentOffset: 42, barlines: starts.slice(1).map((start) => start - 45) };
+
+  out += drawBeam(noteXs, beamY);
+  group.forEach((stroke, strokeIndex) => {
+    const active = Boolean(activeStep && activeStep.barIndex === groupIndex && activeStep.strokeIndex === strokeIndex);
+    out += drawStroke(stroke, noteXs[strokeIndex], beamY, syllableY, active);
+  });
+  return out;
+}
+
+function drawRepeat(x: number): string {
+  return `
+    <g transform="translate(${x} 430)">
+      <circle cx="-39" cy="-28" r="7" fill="${BLACK}" />
+      <circle cx="-39" cy="28" r="7" fill="${BLACK}" />
+      <line x1="-16" y1="-90" x2="-16" y2="90" stroke="${BLACK}" stroke-width="4" />
+      <line x1="4" y1="-90" x2="4" y2="90" stroke="${BLACK}" stroke-width="11" />
+    </g>`;
 }
 
 function renderExerciseSVGString(exercise: Exercise, activeStep?: { barIndex: number; strokeIndex: number } | null): string {
-  const width = 1200;
-  const height = 650;
-  const noteheadY = 420;
-  const syllableY = 540;
-  const beamY = 330;
-  const accentY = 295;
-  const barlineY1 = 335;
-  const barlineY2 = 490;
-  const repeatX = 1100;
-  const { starts, noteGap, accentOffset, barlines } = layoutForExercise(exercise);
   const top = exercise.meter === '6/8' ? '6' : exercise.meter === '3/4' ? '3' : '4';
   const bottom = exercise.meter === '6/8' ? '8' : '4';
+  const layout = groupLayout(exercise);
 
   let svg = `
-    <rect width="${width}" height="${height}" fill="#deddd9" />
+    <rect width="${SVG_WIDTH}" height="${SVG_HEIGHT}" fill="${SVG_BG}" />
+    ${drawLegend()}
 
-    ${renderLegendRow('Grave', 'DUM', 80)}
-    ${renderLegendRow('Agudo', 'TA', 140)}
-    ${renderLegendRow('Relleno', 'TI', 200)}
-
-    <text x="95" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="400" fill="#000000">${top}</text>
-    <text x="95" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="400" fill="#000000">${bottom}</text>
-    <line x1="175" y1="${barlineY1}" x2="175" y2="${barlineY2}" stroke="#000000" stroke-width="9" stroke-linecap="butt" />
+    ${svgText(92, 410, top, 78, 'middle')}
+    ${svgText(92, 492, bottom, 78, 'middle')}
+    <line x1="160" y1="358" x2="160" y2="510" stroke="${BLACK}" stroke-width="9" stroke-linecap="butt" />
   `;
 
-  exercise.bars.forEach((bar, barIndex) => {
-    const start = starts[barIndex] ?? 300 + barIndex * 200;
-    const xs = bar.map((_, noteIndex) => start + noteIndex * noteGap);
-
-    if (bar.some((stroke) => stroke.accent)) {
-      svg += `<text x="${start + accentOffset}" y="${accentY}" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="600" fill="#000000">&gt;</text>`;
-    }
-
-    if (xs.length > 1) {
-      svg += `<line x1="${xs[0] + 11}" y1="${beamY}" x2="${xs[xs.length - 1] + 11}" y2="${beamY}" stroke="#000000" stroke-width="10" stroke-linecap="square" />`;
-    }
-
-    bar.forEach((stroke, strokeIndex) => {
-      svg += renderNoteAt(stroke, xs[strokeIndex], noteheadY, syllableY, activeStep?.barIndex === barIndex && activeStep?.strokeIndex === strokeIndex);
-    });
-
-    if (barIndex < exercise.bars.length - 1 && barlines[barIndex] !== undefined) {
-      const x = barlines[barIndex];
-      svg += `<line x1="${x}" y1="${barlineY1}" x2="${x}" y2="${barlineY2}" stroke="#000000" stroke-width="3.5" />`;
-    }
+  exercise.bars.forEach((bar, index) => {
+    svg += drawGroup(exercise, bar, index, layout.starts[index] ?? layout.starts[layout.starts.length - 1], activeStep);
   });
 
-  svg += `
-    <g transform="translate(${repeatX} 412)">
-      <circle cx="-40" cy="-28" r="7.5" fill="#000000" />
-      <circle cx="-40" cy="28" r="7.5" fill="#000000" />
-      <line x1="-18" y1="-77" x2="-18" y2="78" stroke="#000000" stroke-width="4" />
-      <line x1="2" y1="-77" x2="2" y2="78" stroke="#000000" stroke-width="12" />
-    </g>
-    <desc>${esc(exercise.patternRaw)}</desc>
-  `;
+  layout.separators.forEach((x) => {
+    svg += `<line x1="${x}" y1="358" x2="${x}" y2="510" stroke="${BLACK}" stroke-width="3.5" />`;
+  });
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="100%" height="100%" role="img">${svg}</svg>`;
+  svg += drawRepeat(layout.repeatX);
+  svg += `<desc>${esc(exercise.patternRaw)}</desc>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" width="100%" height="100%" role="img">${svg}</svg>`;
 }
 
 async function svgToPngBlob(svg: string): Promise<Blob> {
@@ -219,11 +259,11 @@ async function svgToPngBlob(svg: string): Promise<Blob> {
     const image = new Image();
     image.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = 2400;
-      canvas.height = 1300;
+      canvas.width = SVG_WIDTH * 2;
+      canvas.height = SVG_HEIGHT * 2;
       const ctx = canvas.getContext('2d');
       if (!ctx) return reject(new Error('No canvas context'));
-      ctx.drawImage(image, 0, 0, 2400, 1300);
+      ctx.drawImage(image, 0, 0, SVG_WIDTH * 2, SVG_HEIGHT * 2);
       canvas.toBlob((blob) => {
         URL.revokeObjectURL(url);
         blob ? resolve(blob) : reject(new Error('No PNG blob'));

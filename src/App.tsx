@@ -115,15 +115,25 @@ function renderNoteAt(stroke: Stroke, x: number, y: number, syllableY: number | 
   return `${activeGlow}${stem}${head}${label}`;
 }
 
+function renderLegendNote(syllable: Syllable, x: number, y: number): string {
+  const stemX = x + 11;
+  const stemTopY = syllable === 'DUM' ? 40 : syllable === 'TA' ? 110 : 150;
+  const stemWidth = syllable === 'DUM' ? 5 : 4;
+  const head = syllable === 'TI'
+    ? `<g transform="translate(${x} ${y})"><line x1="-13" y1="-13" x2="13" y2="13" stroke="#000000" stroke-width="5" stroke-linecap="round" /><line x1="13" y1="-13" x2="-13" y2="13" stroke="#000000" stroke-width="5" stroke-linecap="round" /></g>`
+    : `<ellipse cx="${x}" cy="${y}" rx="${syllable === 'DUM' ? 18 : 15}" ry="${syllable === 'DUM' ? 12 : 10}" transform="rotate(-20 ${x} ${y})" fill="#000000" />`;
+
+  return `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${stemTopY}" stroke="#000000" stroke-width="${stemWidth}" stroke-linecap="butt" />${head}`;
+}
+
 function renderLegendRow(label: string, syllable: Syllable, rowY: number): string {
   const legendTextX = 470;
   const legendSymbolX = 620;
   const legendLabelX = 710;
-  const stroke: Stroke = { syllable, accent: false };
   return `
     <g>
       <text x="${legendTextX}" y="${rowY + 9}" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="400" fill="#000000">${label}</text>
-      ${renderNoteAt(stroke, legendSymbolX, rowY, null)}
+      ${renderLegendNote(syllable, legendSymbolX, rowY)}
       <text x="${legendLabelX}" y="${rowY + 9}" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="500" fill="#000000">${syllable}</text>
     </g>
   `;
@@ -131,7 +141,7 @@ function renderLegendRow(label: string, syllable: Syllable, rowY: number): strin
 
 function layoutForExercise(exercise: Exercise): { starts: number[]; noteGap: number; accentOffset: number; barlines: number[] } {
   if (exercise.meter === '6/8') {
-    return { starts: [330, 700], noteGap: 80, accentOffset: 80, barlines: [625] };
+    return { starts: [330, 700], noteGap: 80, accentOffset: 80, barlines: [620] };
   }
   if (exercise.meter === '4/4' && exercise.bars.length === 4) {
     return { starts: [300, 500, 700, 900], noteGap: 85, accentOffset: 42, barlines: [455, 655, 855] };

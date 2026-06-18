@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import JSZip from 'jszip';
-import { Download, FileAudio, FileImage, FileDown, Music4, Play, Square } from 'lucide-react';
+import { FileAudio, FileImage, FileDown, Music4, Play, Square } from 'lucide-react';
 import type { AudioOptions, Exercise, Stroke, Syllable } from './types';
 
 const EXAMPLE_DATA = `Ejercicio 1 — 4/4
@@ -97,51 +97,108 @@ function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function noteY(stroke: Stroke): number {
-  if (stroke.syllable === 'DUM') return 330;
-  if (stroke.syllable === 'TA') return 290;
-  return 305;
-}
-
 function stemLength(stroke: Stroke): number {
   if (stroke.syllable === 'DUM') return 120;
   if (stroke.syllable === 'TA') return 80;
   return 95;
 }
 
-function renderNote(stroke: Stroke, x: number, active: boolean): string {
+function renderNoteAt(stroke: Stroke, x: number, y: number, syllableY: number | null, active = false): string {
   const color = active ? '#2563eb' : '#000000';
-  const y = noteY(stroke);
   const stemX = stroke.syllable === 'TI' ? x + 10 : x + 11;
   const activeGlow = active ? `<circle cx="${x}" cy="${y}" r="34" fill="#2563eb" fill-opacity="0.18" />` : '';
-  const stem = `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${y - stemLength(stroke)}" stroke="${color}" stroke-width="${stroke.syllable === 'DUM' ? 5 : 4}" />`;
+  const stem = `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${y - stemLength(stroke)}" stroke="${color}" stroke-width="${stroke.syllable === 'DUM' ? 5 : 4}" stroke-linecap="butt" />`;
   const head = stroke.syllable === 'TI'
     ? `<g transform="translate(${x} ${y})"><line x1="-13" y1="-13" x2="13" y2="13" stroke="${color}" stroke-width="5" stroke-linecap="round" /><line x1="13" y1="-13" x2="-13" y2="13" stroke="${color}" stroke-width="5" stroke-linecap="round" /></g>`
     : `<ellipse cx="${x}" cy="${y}" rx="${stroke.syllable === 'DUM' ? 18 : 15}" ry="${stroke.syllable === 'DUM' ? 12 : 10}" transform="rotate(-20 ${x} ${y})" fill="${color}" />`;
-  return `${activeGlow}${stem}${head}<text x="${x}" y="405" text-anchor="middle" font-family="Arial" font-size="30" font-weight="500" fill="${color}">${stroke.syllable}</text>`;
+  const label = syllableY === null ? '' : `<text x="${x}" y="${syllableY}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="500" fill="${color}">${stroke.syllable}</text>`;
+  return `${activeGlow}${stem}${head}${label}`;
 }
 
-function renderLegend(label: string, syllable: Syllable, x: number): string {
-  const y = 100;
-  const s: Stroke = { syllable, accent: false };
-  return `<g><text x="${x - 55}" y="108" text-anchor="end" font-family="Arial" font-size="28">${label}</text>${renderNote(s, x, false).replace(/<text[\s\S]*$/, '')}<text x="${x + 42}" y="108" font-family="Arial" font-size="28" font-weight="500">${syllable}</text></g>`;
+function renderLegendRow(label: string, syllable: Syllable, rowY: number): string {
+  const legendTextX = 470;
+  const legendSymbolX = 620;
+  const legendLabelX = 710;
+  const stroke: Stroke = { syllable, accent: false };
+  return `
+    <g>
+      <text x="${legendTextX}" y="${rowY + 9}" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="400" fill="#000000">${label}</text>
+      ${renderNoteAt(stroke, legendSymbolX, rowY, null)}
+      <text x="${legendLabelX}" y="${rowY + 9}" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="500" fill="#000000">${syllable}</text>
+    </g>
+  `;
+}
+
+function layoutForExercise(exercise: Exercise): { starts: number[]; noteGap: number; accentOffset: number; barlines: number[] } {
+  if (exercise.meter === '6/8') {
+    return { starts: [330, 700], noteGap: 80, accentOffset: 80, barlines: [625] };
+  }
+  if (exercise.meter === '4/4' && exercise.bars.length === 4) {
+    return { starts: [300, 500, 700, 900], noteGap: 85, accentOffset: 42, barlines: [455, 655, 855] };
+  }
+  const starts = exercise.bars.map((_, index) => 300 + index * 200);
+  return { starts, noteGap: 85, accentOffset: 42, barlines: starts.slice(1).map((start) => start - 45) };
 }
 
 function renderExerciseSVGString(exercise: Exercise, activeStep?: { barIndex: number; strokeIndex: number } | null): string {
-  const starts = exercise.meter === '4/4' && exercise.bars.length === 4 ? [270, 470, 670, 870] : exercise.bars.map((_, i) => 270 + i * 220);
+  const width = 1200;
+  const height = 650;
+  const noteheadY = 420;
+  const syllableY = 540;
+  const beamY = 330;
+  const accentY = 295;
+  const barlineY1 = 335;
+  const barlineY2 = 490;
+  const repeatX = 1100;
+  const { starts, noteGap, accentOffset, barlines } = layoutForExercise(exercise);
   const top = exercise.meter === '6/8' ? '6' : exercise.meter === '3/4' ? '3' : '4';
   const bottom = exercise.meter === '6/8' ? '8' : '4';
-  let svg = `<rect width="1200" height="520" fill="#d9dcda" />${renderLegend('Grave', 'DUM', 330)}${renderLegend('Agudo', 'TA', 570)}${renderLegend('Relleno', 'TI', 815)}<text x="80" y="285" text-anchor="middle" font-family="Arial" font-size="86">${top}</text><text x="80" y="365" text-anchor="middle" font-family="Arial" font-size="86">${bottom}</text><line x1="165" y1="210" x2="165" y2="345" stroke="#000" stroke-width="9" />`;
+
+  let svg = `
+    <rect width="${width}" height="${height}" fill="#d9dcda" />
+
+    ${renderLegendRow('Grave', 'DUM', 80)}
+    ${renderLegendRow('Agudo', 'TA', 140)}
+    ${renderLegendRow('Relleno', 'TI', 200)}
+
+    <text x="95" y="375" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="400" fill="#000000">${top}</text>
+    <text x="95" y="455" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="400" fill="#000000">${bottom}</text>
+    <line x1="175" y1="${barlineY1}" x2="175" y2="${barlineY2}" stroke="#000000" stroke-width="9" stroke-linecap="butt" />
+  `;
+
   exercise.bars.forEach((bar, barIndex) => {
-    const start = starts[barIndex] ?? 270 + barIndex * 220;
-    const xs = bar.map((_, i) => start + i * 85);
-    if (bar.some((stroke) => stroke.accent)) svg += `<text x="${start + 42}" y="155" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-size="64" font-weight="600">&gt;</text>`;
-    if (xs.length > 1) svg += `<line x1="${xs[0] + 11}" y1="210" x2="${xs[xs.length - 1] + 11}" y2="210" stroke="#000" stroke-width="10" />`;
-    bar.forEach((stroke, strokeIndex) => svg += renderNote(stroke, xs[strokeIndex], activeStep?.barIndex === barIndex && activeStep?.strokeIndex === strokeIndex));
-    if (barIndex < exercise.bars.length - 1) svg += `<line x1="${[420, 620, 820][barIndex] ?? start + 160}" y1="210" x2="${[420, 620, 820][barIndex] ?? start + 160}" y2="345" stroke="#000" stroke-width="3.5" />`;
+    const start = starts[barIndex] ?? 300 + barIndex * 200;
+    const xs = bar.map((_, noteIndex) => start + noteIndex * noteGap);
+
+    if (bar.some((stroke) => stroke.accent)) {
+      svg += `<text x="${start + accentOffset}" y="${accentY}" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="600" fill="#000000">&gt;</text>`;
+    }
+
+    if (xs.length > 1) {
+      svg += `<line x1="${xs[0] + 11}" y1="${beamY}" x2="${xs[xs.length - 1] + 11}" y2="${beamY}" stroke="#000000" stroke-width="10" stroke-linecap="square" />`;
+    }
+
+    bar.forEach((stroke, strokeIndex) => {
+      svg += renderNoteAt(stroke, xs[strokeIndex], noteheadY, syllableY, activeStep?.barIndex === barIndex && activeStep?.strokeIndex === strokeIndex);
+    });
+
+    if (barIndex < exercise.bars.length - 1 && barlines[barIndex] !== undefined) {
+      const x = barlines[barIndex];
+      svg += `<line x1="${x}" y1="${barlineY1}" x2="${x}" y2="${barlineY2}" stroke="#000000" stroke-width="3.5" />`;
+    }
   });
-  svg += `<g transform="translate(1080 278)"><circle cx="-40" cy="-28" r="7.5" /><circle cx="-40" cy="28" r="7.5" /><line x1="-18" y1="-68" x2="-18" y2="68" stroke="#000" stroke-width="4" /><line x1="2" y1="-68" x2="2" y2="68" stroke="#000" stroke-width="12" /></g><desc>${esc(exercise.patternRaw)}</desc>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" width="100%" height="100%" role="img">${svg}</svg>`;
+
+  svg += `
+    <g transform="translate(${repeatX} 412)">
+      <circle cx="-40" cy="-28" r="7.5" fill="#000000" />
+      <circle cx="-40" cy="28" r="7.5" fill="#000000" />
+      <line x1="-18" y1="-77" x2="-18" y2="78" stroke="#000000" stroke-width="4" />
+      <line x1="2" y1="-77" x2="2" y2="78" stroke="#000000" stroke-width="12" />
+    </g>
+    <desc>${esc(exercise.patternRaw)}</desc>
+  `;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="100%" height="100%" role="img">${svg}</svg>`;
 }
 
 async function svgToPngBlob(svg: string): Promise<Blob> {
@@ -151,10 +208,10 @@ async function svgToPngBlob(svg: string): Promise<Blob> {
     image.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = 2400;
-      canvas.height = 1040;
+      canvas.height = 1300;
       const ctx = canvas.getContext('2d');
       if (!ctx) return reject(new Error('No canvas context'));
-      ctx.drawImage(image, 0, 0, 2400, 1040);
+      ctx.drawImage(image, 0, 0, 2400, 1300);
       canvas.toBlob((blob) => {
         URL.revokeObjectURL(url);
         blob ? resolve(blob) : reject(new Error('No PNG blob'));

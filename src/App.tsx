@@ -130,11 +130,13 @@ function renderLegendRow(label: string, syllable: Syllable, rowY: number): strin
   const legendTextX = 470;
   const legendSymbolX = 620;
   const legendLabelX = 710;
+  const legendFontSize = 34;
+  const legendTextY = rowY + 11;
   return `
     <g>
-      <text x="${legendTextX}" y="${rowY + 9}" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="400" fill="#000000">${label}</text>
+      <text x="${legendTextX}" y="${legendTextY}" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="${legendFontSize}" font-weight="400" fill="#000000">${label}</text>
       ${renderLegendNote(syllable, legendSymbolX, rowY)}
-      <text x="${legendLabelX}" y="${rowY + 9}" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="500" fill="#000000">${syllable}</text>
+      <text x="${legendLabelX}" y="${legendTextY}" text-anchor="start" font-family="Arial, Helvetica, sans-serif" font-size="${legendFontSize}" font-weight="500" fill="#000000">${syllable}</text>
     </g>
   `;
 }
@@ -165,7 +167,7 @@ function renderExerciseSVGString(exercise: Exercise, activeStep?: { barIndex: nu
   const bottom = exercise.meter === '6/8' ? '8' : '4';
 
   let svg = `
-    <rect width="${width}" height="${height}" fill="#d9dcda" />
+    <rect width="${width}" height="${height}" fill="#deddd9" />
 
     ${renderLegendRow('Grave', 'DUM', 80)}
     ${renderLegendRow('Agudo', 'TA', 140)}

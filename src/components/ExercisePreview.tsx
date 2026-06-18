@@ -13,7 +13,7 @@ interface ExercisePreviewProps {
   renderForDownload?: boolean;
 }
 
-const SVG_WIDTH = 1000;
+const SVG_WIDTH = 1200;
 const SVG_HEIGHT = 600;
 const BG = "#d7dad7";
 const BLACK = "#000000";
@@ -45,41 +45,33 @@ function drawXHead(x: number, y: number, color = BLACK): string {
     </g>`;
 }
 
-function drawLegendNote(kind: "DUM" | "TA" | "TI", x: number, y: number): string {
-  if (kind === "TI") {
-    return `
-      <g>
-        <line x1="${x + 10}" y1="${y - 68}" x2="${x + 10}" y2="${y + 2}" stroke="${BLACK}" stroke-width="3.8" />
-        ${drawXHead(x, y + 8)}
-      </g>`;
-  }
-
-  const stemTop = kind === "DUM" ? y - 95 : y - 64;
+function drawLegendSymbol(kind: "DUM" | "TA" | "TI", x: number, y: number): string {
+  const stemTop = kind === "DUM" ? y - 95 : y - 70;
   return `
-    <g>
-      <line x1="${x + 11}" y1="${stemTop}" x2="${x + 11}" y2="${y + 2}" stroke="${BLACK}" stroke-width="3.8" />
-      ${drawFilledHead(x, y + 8)}
+    <g aria-label="${kind}">
+      <line x1="${x + 11}" y1="${stemTop}" x2="${x + 11}" y2="${y + 5}" stroke="${BLACK}" stroke-width="3.8" />
+      ${kind === "TI" ? drawXHead(x, y) : drawFilledHead(x, y)}
     </g>`;
 }
 
 function drawLegend(): string {
   // Three stacked rows, deliberately high and separate from the notation zone.
-  const labelX = 420;
-  const symbolX = 520;
-  const soundX = 605;
+  const labelX = 510;
+  const symbolX = 610;
+  const soundX = 695;
   return `
     <g aria-label="Leyenda de sonidos">
-      ${text(labelX, 90, "Grave", 37, "end")}
-      ${drawLegendNote("DUM", symbolX, 82)}
-      ${text(soundX, 90, "DUM", 34, "start")}
+      ${text(labelX, 105, "Grave", 37, "end")}
+      ${drawLegendSymbol("DUM", symbolX, 105)}
+      ${text(soundX, 105, "DUM", 34, "start")}
 
-      ${text(labelX, 155, "Agudo", 37, "end")}
-      ${drawLegendNote("TA", symbolX, 147)}
-      ${text(soundX, 155, "TA", 34, "start")}
+      ${text(labelX, 205, "Agudo", 37, "end")}
+      ${drawLegendSymbol("TA", symbolX, 205)}
+      ${text(soundX, 205, "TA", 34, "start")}
 
-      ${text(labelX, 220, "Relleno", 37, "end")}
-      ${drawLegendNote("TI", symbolX, 212)}
-      ${text(soundX, 220, "TI", 34, "start")}
+      ${text(labelX, 285, "Relleno", 37, "end")}
+      ${drawLegendSymbol("TI", symbolX, 285)}
+      ${text(soundX, 285, "TI", 34, "start")}
     </g>`;
 }
 
@@ -119,9 +111,9 @@ function drawBeam(noteXs: number[], beamY: number): string {
 }
 
 function groupLayout(exercise: Exercise): { starts: number[]; gap: number; separators: number[]; repeatX: number } {
-  if (exercise.meter === "6/8") return { starts: [285, 620], gap: 78, separators: [535], repeatX: 875 };
-  if (exercise.meter === "3/4") return { starts: [255, 455, 655], gap: 78, separators: [390, 590], repeatX: 850 };
-  return { starts: [235, 405, 575, 745], gap: 78, separators: [365, 535, 705], repeatX: 885 };
+  if (exercise.meter === "6/8") return { starts: [330, 700], gap: 80, separators: [620], repeatX: 1120 };
+  if (exercise.meter === "3/4") return { starts: [300, 530, 760], gap: 80, separators: [475, 705], repeatX: 1120 };
+  return { starts: [300, 500, 700, 900], gap: 85, separators: [455, 655, 855], repeatX: 1120 };
 }
 
 function drawGroup(exercise: Exercise, group: Stroke[], groupIndex: number, startX: number, activeStep?: { barIndex: number; strokeIndex: number } | null): string {
@@ -145,12 +137,15 @@ function drawGroup(exercise: Exercise, group: Stroke[], groupIndex: number, star
 }
 
 function drawRepeat(x: number): string {
+  const dotsX = x - 30;
+  const bar1X = x;
+  const bar2X = x + 15;
   return `
-    <g transform="translate(${x} 430)">
-      <circle cx="-39" cy="-28" r="7" fill="${BLACK}" />
-      <circle cx="-39" cy="28" r="7" fill="${BLACK}" />
-      <line x1="-16" y1="-90" x2="-16" y2="90" stroke="${BLACK}" stroke-width="4" />
-      <line x1="4" y1="-90" x2="4" y2="90" stroke="${BLACK}" stroke-width="11" />
+    <g aria-label="Repetición final">
+      <circle cx="${dotsX}" cy="390" r="7" fill="${BLACK}" />
+      <circle cx="${dotsX}" cy="455" r="7" fill="${BLACK}" />
+      <line x1="${bar1X}" y1="330" x2="${bar1X}" y2="490" stroke="${BLACK}" stroke-width="6" />
+      <line x1="${bar2X}" y1="330" x2="${bar2X}" y2="490" stroke="${BLACK}" stroke-width="6" />
     </g>`;
 }
 
